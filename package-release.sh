@@ -27,7 +27,7 @@ TOOLCHAIN="/Volumes/S512/Projects/ETC/winsdk/toolchain/clang-cl-msvc.cmake"
 VCPKG_PREFIX="/Volumes/S512/Projects/ETC/vcpkg/installed/x64-windows-cross"
 
 VERSION="$(grep -m1 'set(VERSION' "$SCRIPT_DIR/CMakeLists.txt" | awk '{print $2}')"
-VERSION="${VERSION:-7.0.22}"
+VERSION="${VERSION:-7.0.23}"
 
 SKIP_BUILD=0
 CUSTOM_DLL=""

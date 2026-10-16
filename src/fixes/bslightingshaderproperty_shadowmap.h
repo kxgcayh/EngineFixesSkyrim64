@@ -13,9 +13,13 @@ namespace BSLightingShaderPropertyShadowMap
                 mov(rdx, qword[rsp + 0xE8 + 0x10]);  // BSGeometry*
                 mov(r8, a_function);
                 push(rbx);
+                push(rbp);
+                mov(rbp, rsp);
+                and_(rsp, -16);
                 sub(rsp, 0x20);
                 call(r8);
-                add(rsp, 0x20);
+                mov(rsp, rbp);
+                pop(rbp);
                 pop(rbx);
                 mov(r15, rax);
                 jmp(ptr[rip]);

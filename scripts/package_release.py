@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-VERSION = "7.0.22"
+VERSION = "7.0.23"
 GAME_VERSION = "AE17104"
 MOD_ID = 17230
 

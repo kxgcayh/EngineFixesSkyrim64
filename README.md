@@ -182,8 +182,8 @@ python3 scripts/package_release.py [--dll /path/to/EngineFixes.dll] [--fomod-onl
 ```
 
 Outputs generated in `dist/`:
-- `EngineFixes-Part1-AE17104-v7.0.22.zip`: Direct mod manager installable archive (`SKSE/Plugins/`).
-- `EngineFixes-FOMOD-AllInOne-v7.0.22.zip`: Interactive FOMOD installer with presets for macOS CrossOver, Native Windows, and Clean/Fast.
+- `EngineFixes-Part1-AE17104-v7.0.23.zip`: Direct mod manager installable archive (`SKSE/Plugins/`).
+- `EngineFixes-FOMOD-AllInOne-v7.0.23.zip`: Interactive FOMOD installer with presets for macOS CrossOver, Native Windows, and Clean/Fast.
 - `SHA256SUMS.txt`: SHA-256 integrity checksums for generated archives.
 
 ---
