@@ -19,7 +19,8 @@ namespace Fixes::SaveScreenshots
             REL::Relocation RenderTargetHook_2{ RELOCATION_ID(99023, 105674), VAR_NUM(0x3EA, 0x307) };
             REL::Relocation ScreenshotRenderOrigJnz{ RELOCATION_ID(99023, 105674), VAR_NUM(0x4D5, 0x3B1) };
 
-            if (RE::GetINISetting("bUseTAA:Display")->GetBool()) {
+            const auto bUseTAA = RE::GetINISetting("bUseTAA:Display");
+            if (bUseTAA && bUseTAA->GetBool()) {
                 return;
             }
 
@@ -28,7 +29,8 @@ namespace Fixes::SaveScreenshots
             // have one fix that causes flicker during quicksave and one fix that causes blank journal menus
             // so just combine both
             // with DoF enabled just use the "flicker" fix even for ingame requests
-            if (RE::GetINISetting("bDoDepthOfField:Imagespace")->GetBool()) {
+            const auto bDoDepthOfField = RE::GetINISetting("bDoDepthOfField:Imagespace");
+            if (bDoDepthOfField && bDoDepthOfField->GetBool()) {
                 struct IsSaveRequest_Code : Xbyak::CodeGenerator
                 {
                     explicit IsSaveRequest_Code(std::uintptr_t a_target)

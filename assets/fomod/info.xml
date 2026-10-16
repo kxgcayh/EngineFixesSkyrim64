@@ -1,0 +1,7 @@
+<fomod>
+  <Name>Engine Fixes for Skyrim Special Edition and Anniversary Edition</Name>
+  <Author>aers (Updated and Ported for AE 1.7.104 and CrossOver)</Author>
+  <Version>7.0.22</Version>
+  <Description>Comprehensive engine bug fixes, memory allocator overrides, and stability improvements for Skyrim SE/AE, optimized for native Windows and macOS CrossOver / D3DMetal.</Description>
+  <Website>https://www.nexusmods.com/skyrimspecialedition/mods/17230</Website>
+</fomod>

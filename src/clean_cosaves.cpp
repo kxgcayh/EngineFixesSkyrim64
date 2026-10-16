@@ -1,7 +1,5 @@
 #include "clean_cosaves.h"
 
-#include <boost/regex.hpp>
-
 namespace Util::CoSaves
 {
     std::optional<std::filesystem::path> GetSavesPath()
@@ -43,15 +41,13 @@ namespace Util::CoSaves
 
         REX::TRACE("cleaning cosaves in path {}"sv, savesPath->string());
 
-        constexpr auto                     REGEX_CONSTANTS = boost::regex_constants::ECMAScript | boost::regex_constants::icase;
-        const boost::regex                 cosavePattern(R"(.*\.skse$)", REGEX_CONSTANTS);
         std::vector<std::filesystem::path> matches;
         std::error_code                    ec;
 
         for (const auto& dirEntry : std::filesystem::directory_iterator(*savesPath)) {
             if (dirEntry.is_regular_file()) {
                 const auto& cosave = dirEntry.path();
-                if (boost::regex_match(cosave.filename().string(), cosavePattern)) {
+                if (HasSKSEExtension(cosave)) {
                     auto save = cosave;
                     save.replace_extension(".ess"sv);
                     if (!std::filesystem::exists(save, ec)) {

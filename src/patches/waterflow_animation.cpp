@@ -16,9 +16,42 @@ namespace Patches::WaterflowAnimation::detail
                     Xbyak::Label funcLabel;
                     Xbyak::Label applicationRunTimeLabel;
 
-                    sub(rsp, 0x20);
+                    // Preserve volatile GPRs
+                    push(rax);
+                    push(rcx);
+                    push(rdx);
+                    push(r8);
+                    push(r9);
+                    push(r10);
+                    push(r11);
+
+                    // Allocate space for 6 XMM registers (0x60) + 32-byte shadow space (0x20) = 0x80 bytes (maintains 16-byte stack alignment)
+                    sub(rsp, 0x80);
+                    movdqu(ptr[rsp + 0x20], xmm0);
+                    movdqu(ptr[rsp + 0x30], xmm1);
+                    movdqu(ptr[rsp + 0x40], xmm2);
+                    movdqu(ptr[rsp + 0x50], xmm3);
+                    movdqu(ptr[rsp + 0x60], xmm4);
+                    movdqu(ptr[rsp + 0x70], xmm5);
+
                     call(ptr[rip + funcLabel]);
-                    add(rsp, 0x20);
+
+                    movdqu(xmm0, ptr[rsp + 0x20]);
+                    movdqu(xmm1, ptr[rsp + 0x30]);
+                    movdqu(xmm2, ptr[rsp + 0x40]);
+                    movdqu(xmm3, ptr[rsp + 0x50]);
+                    movdqu(xmm4, ptr[rsp + 0x60]);
+                    movdqu(xmm5, ptr[rsp + 0x70]);
+                    add(rsp, 0x80);
+
+                    // Restore volatile GPRs
+                    pop(r11);
+                    pop(r10);
+                    pop(r9);
+                    pop(r8);
+                    pop(rdx);
+                    pop(rcx);
+                    pop(rax);
 
                     // orig code
                     mov(rdx, ptr[rip + applicationRunTimeLabel]);

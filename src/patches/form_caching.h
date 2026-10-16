@@ -63,10 +63,9 @@ namespace Patches::FormCaching
         {
             const auto result = g_hk_RemoveAt.call<std::uint64_t>(a_self, a_formIdPtr, a_prevValueFunctor);
 
-            const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
-            const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
-
-            if (result == 1) {
+            if (result == 1 && a_formIdPtr != nullptr) {
+                const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
+                const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
                 g_formCache[masterId].erase(baseId);
                 TreeLodReferenceCaching::detail::RemoveCachedForm(baseId);
             }
@@ -79,19 +78,21 @@ namespace Patches::FormCaching
         // the functor stores the TESForm to set as the first field
         inline bool FormScatterTable_SetAt(std::uintptr_t a_self, RE::FormID* a_formIdPtr, RE::TESForm** a_valueFunctor, void* a_unk)
         {
-            const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
-            const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
+            if (a_formIdPtr != nullptr && a_valueFunctor != nullptr) {
+                const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
+                const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
 
-            RE::TESForm* formPointer = *a_valueFunctor;
+                RE::TESForm* formPointer = *a_valueFunctor;
 
-            if (formPointer != nullptr) {
-                HashMap::accessor a;
-                if (!g_formCache[masterId].emplace(a, baseId, formPointer)) {
-                    REX::TRACE("replacing an existing form in form cache"sv);
-                    a->second = formPointer;
+                if (formPointer != nullptr) {
+                    HashMap::accessor a;
+                    if (!g_formCache[masterId].emplace(a, baseId, formPointer)) {
+                        REX::TRACE("replacing an existing form in form cache"sv);
+                        a->second = formPointer;
+                    }
+
+                    TreeLodReferenceCaching::detail::RemoveCachedForm(baseId);
                 }
-
-                TreeLodReferenceCaching::detail::RemoveCachedForm(baseId);
             }
 
             return orig_FormScatterTable_SetAt(a_self, a_formIdPtr, a_valueFunctor, a_unk);
@@ -103,10 +104,9 @@ namespace Patches::FormCaching
         {
             const auto result = g_hk_RemoveAt.call<std::uint32_t>(a_self, a_arg2, a_crc, a_formIdPtr, a_prevValueFunctor);
 
-            const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
-            const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
-
-            if (result == 1) {
+            if (result == 1 && a_formIdPtr != nullptr) {
+                const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
+                const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
                 g_formCache[masterId].erase(baseId);
                 TreeLodReferenceCaching::detail::RemoveCachedForm(baseId);
             }
@@ -119,19 +119,21 @@ namespace Patches::FormCaching
         // the functor stores the TESForm to set as the first field
         inline bool FormScatterTable_SetAt(std::uintptr_t a_self, std::uintptr_t a_arg2, std::uint32_t a_crc, RE::FormID* a_formIdPtr, RE::TESForm** a_valueFunctor, void* a_unk)
         {
-            const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
-            const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
+            if (a_formIdPtr != nullptr && a_valueFunctor != nullptr) {
+                const std::uint8_t  masterId = (*a_formIdPtr & 0xFF000000) >> 24;
+                const std::uint32_t baseId = (*a_formIdPtr & 0x00FFFFFF);
 
-            RE::TESForm* formPointer = *a_valueFunctor;
+                RE::TESForm* formPointer = *a_valueFunctor;
 
-            if (formPointer != nullptr) {
-                HashMap::accessor a;
-                if (!g_formCache[masterId].emplace(a, baseId, formPointer)) {
-                    REX::TRACE("replacing an existing form in form cache"sv);
-                    a->second = formPointer;
+                if (formPointer != nullptr) {
+                    HashMap::accessor a;
+                    if (!g_formCache[masterId].emplace(a, baseId, formPointer)) {
+                        REX::TRACE("replacing an existing form in form cache"sv);
+                        a->second = formPointer;
+                    }
+
+                    TreeLodReferenceCaching::detail::RemoveCachedForm(baseId);
                 }
-
-                TreeLodReferenceCaching::detail::RemoveCachedForm(baseId);
             }
 
             return orig_FormScatterTable_SetAt(a_self, a_arg2, a_crc, a_formIdPtr, a_valueFunctor, a_unk);

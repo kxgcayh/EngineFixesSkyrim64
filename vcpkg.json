@@ -1,8 +1,8 @@
 {
   "name": "enginefixes",
-  "version-string": "7.0.21",
-  "description": "Engine Fixes for Skyrim SE (1.5.97, 1.7.99)",
-  "homepage": "https://github.com/aers/EngineFixesSkyrim64/",
+  "version-string": "7.0.22",
+  "description": "Engine Fixes for Skyrim SE (1.5.97, 1.7.99, 1.7.104)",
+  "homepage": "https://github.com/kxgcayh/EngineFixesSkyrim64/",
   "license": "MIT",
   "dependencies": [
     "spdlog",
@@ -18,7 +18,6 @@
       ]
     },
     "safetyhook",
-    "boost-regex",
     "tbb"
   ],
   "builtin-baseline": "7f3781e19cc7d4e4882a4caec01668c6f7b5c163"

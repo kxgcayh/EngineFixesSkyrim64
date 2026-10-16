@@ -29,6 +29,10 @@ namespace Patches::SaveAddedSoundCategories
                             localFormID = localFormID & 0x00000FFF;
                         }
                         const auto srcFile = soundCategory->GetDescriptionOwnerFile();
+                        if (!srcFile || !srcFile->fileName) {
+                            continue;
+                        }
+
                         REX::TRACE("plugin: {} form id: {:08X} volume: {}"sv, srcFile->fileName, localFormID, soundCategory->volumeMult);
 
                         char localFormIDHex[] = "DEADBEEF";
@@ -72,6 +76,10 @@ namespace Patches::SaveAddedSoundCategories
                     sprintf_s(localFormIDHex, std::extent_v<decltype(localFormIDHex)>, "%08X", localFormID);
 
                     auto srcFile = soundCategory->GetDescriptionOwnerFile();
+                    if (!srcFile || !srcFile->fileName) {
+                        continue;
+                    }
+
                     auto vol = store.GetDoubleValue(srcFile->fileName, localFormIDHex, DBL_MAX);
 
                     if (vol != DBL_MAX) {

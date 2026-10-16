@@ -66,16 +66,16 @@ namespace Memory::ScrapHeap
         {
             using tuple_t = std::tuple<REL::ID, std::size_t, void*>;
 #ifdef SKYRIM_AE
-            constexpr std::array todo{
-                tuple_t{ REL::ID(68144), 0x5E7, &Allocate },
-                tuple_t{ REL::ID(68146), 0x13E, &Deallocate },
-                tuple_t{ REL::ID(68142), 0x13A, &Ctor },
+            const std::array todo{
+                tuple_t{ REL::ID(68144), 0x5E7, reinterpret_cast<void*>(&Allocate) },
+                tuple_t{ REL::ID(68146), 0x13E, reinterpret_cast<void*>(&Deallocate) },
+                tuple_t{ REL::ID(68142), 0x13A, reinterpret_cast<void*>(&Ctor) },
             };
 #else
-            constexpr std::array todo{
-                tuple_t{ REL::ID(66884), 0x607, &Allocate },
-                tuple_t{ REL::ID(66885), 0x143, &Deallocate },
-                tuple_t{ REL::ID(66882), 0x128, &Ctor },
+            const std::array todo{
+                tuple_t{ REL::ID(66884), 0x607, reinterpret_cast<void*>(&Allocate) },
+                tuple_t{ REL::ID(66885), 0x143, reinterpret_cast<void*>(&Deallocate) },
+                tuple_t{ REL::ID(66882), 0x128, reinterpret_cast<void*>(&Ctor) },
             };
 #endif
 

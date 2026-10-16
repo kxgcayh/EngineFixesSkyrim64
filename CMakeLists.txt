@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.20)
 set(NAME "EngineFixes" CACHE STRING "")
-set(VERSION 7.0.21 CACHE STRING "")
+set(VERSION 7.0.22 CACHE STRING "")
 
 # ---- Options ----
-option(COPY_BUILD "Copy the build output to the Skyrim directory." TRUE)
+option(COPY_BUILD "Copy the build output to the Skyrim directory." OFF)
 option(BUILD_SKYRIMAE "Build for Skyrim AE" OFF)
+option(BUILD_TESTS "Build offline unit test suite" OFF)
 
 # ---- Cache build vars ----
 macro(set_from_environment VARIABLE)
@@ -61,7 +62,6 @@ else()
     )
 endif()
 
-set(Boost_USE_STATIC_RUNTIME OFF CACHE BOOL "")
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "")
 
 # ---- Project ----
@@ -103,8 +103,6 @@ endif()
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_DEBUG OFF)
 
-set(Boost_USE_STATIC_LIBS ON)
-
 # ---- Dependencies ----
 if(DEFINED CommonLibPath AND NOT ${CommonLibPath} STREQUAL "" AND IS_DIRECTORY ${CommonLibPath})
     add_subdirectory(${CommonLibPath} ${CommonLibName})
@@ -118,12 +116,6 @@ endif()
 
 find_package(TBB CONFIG REQUIRED)
 find_package(safetyhook CONFIG REQUIRED)
-
-if(POLICY CMP0167)
-    cmake_policy(SET CMP0167 NEW)
-endif()
-
-find_package(Boost CONFIG REQUIRED COMPONENTS regex)
 
 # ---- Add source files ----
 include(cmake/headerlist.cmake)
@@ -182,7 +174,6 @@ target_link_libraries(
     safetyhook::safetyhook
     TBB::tbb
     TBB::tbbmalloc
-    Boost::regex
 )
 
 target_precompile_headers(
@@ -208,9 +199,16 @@ if(MSVC)
         "$<$<CONFIG:RELEASE>:/Zc:inline;/JMC-;/Ob3>"
     )
 
+    target_link_libraries(
+        ${PROJECT_NAME}
+        PRIVATE
+        delayimp
+    )
+
     target_link_options(
         ${PROJECT_NAME}
         PRIVATE
+        /DELAYLOAD:tbbmalloc.dll
         "$<$<CONFIG:DEBUG>:/INCREMENTAL;/OPT:NOREF;/OPT:NOICF>"
         "$<$<CONFIG:RELEASE>:/INCREMENTAL:NO;/OPT:REF;/OPT:ICF;/DEBUG:FULL>"
     )
@@ -231,4 +229,13 @@ if(COPY_BUILD)
             "Variable ${SkyrimPath} is not defined. Skipping post-build copy command."
         )
     endif()
+endif()
+
+# ---- Tests ----
+if(BUILD_TESTS)
+    enable_testing()
+    add_executable(EngineFixes_Tests tests/test_main.cpp)
+    target_compile_features(EngineFixes_Tests PRIVATE cxx_std_20)
+    target_include_directories(EngineFixes_Tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+    add_test(NAME EngineFixes_UnitTests COMMAND EngineFixes_Tests)
 endif()

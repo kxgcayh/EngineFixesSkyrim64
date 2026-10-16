@@ -11,6 +11,8 @@ vs*/
 
 # files
 *.zip
+.DS_Store
 compile_commands.json
 buildse/
 buildae/
+dist/

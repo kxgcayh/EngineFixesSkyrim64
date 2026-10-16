@@ -11,7 +11,7 @@ namespace Patches::MaxStdIO
                 nullptr;
         if (proc != nullptr) {
             const auto get = reinterpret_cast<decltype(&_getmaxstdio)>(REX::W32::GetProcAddress(handle, "_getmaxstdio"));
-            const auto old = get();
+            const auto old = get ? get() : 512;
             auto       result = proc(8192);
             if (result != -1) {
                 if (get)

@@ -5,14 +5,19 @@
 #include "renderpass_cache.h"
 #include "scaleform_allocator.h"
 #include "scrapheap.h"
+#include "util/environment.h"
 
 namespace Memory
 {
     void Install()
     {
-        if (Settings::Debug::bDisableTBB.GetValue()) {
+        const bool wineCompat = Settings::General::bWineCompatibility.GetValue() && Util::Environment::IsRunningUnderWine();
+        if (Settings::Debug::bDisableTBB.GetValue() || wineCompat) {
             Allocator::SetAllocator(Allocator::CRT);
             REX::INFO("set allocator to CRT"sv);
+            if (wineCompat) {
+                REX::INFO("wine/crossover detected: using CRT allocator for Darwin/Apple Silicon unified memory optimization"sv);
+            }
         } else {
             Allocator::SetAllocator(Allocator::TBB);
             REX::INFO("set allocator to TBB"sv);

@@ -6,6 +6,7 @@ namespace Settings
     {
         static REX::TOML::Bool bVerboseLogging("General", "bVerboseLogging", false);
         static REX::TOML::Bool bCleanSKSECoSaves("General", "bCleanSKSECoSaves", false);
+        static REX::TOML::Bool bWineCompatibility("General", "bWineCompatibility", true);
     }
 
     namespace Fixes

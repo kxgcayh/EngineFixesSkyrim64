@@ -12,6 +12,8 @@
 #include "patches/patches.h"
 #include "patches/save_added_sound_categories.h"
 #include "settings.h"
+#include "util/dialog.h"
+#include "util/environment.h"
 #include "warnings/warnings.h"
 
 static bool g_isPreloaded = false;
@@ -97,8 +99,21 @@ extern "C" __declspec(dllexport) void __stdcall Initialize()
 
     REX::INFO("EngineFixes v{}.{}.{} PreLoad"sv, Version::MAJOR, Version::MINOR, Version::PATCH);
 
+    if (Util::Environment::IsRunningUnderWine()) {
+        const auto wineVer = Util::Environment::GetWineVersion();
+        const auto hostSys = Util::Environment::GetWineHostSysname();
+        REX::INFO("Runtime environment: Wine {} (Host: {})"sv,
+            wineVer.empty() ? "unknown" : wineVer,
+            hostSys.empty() ? "unknown" : hostSys);
+        if (Util::Environment::IsRunningOnDarwin()) {
+            REX::INFO("Host OS: Apple Darwin / macOS (D3DMetal / Apple Silicon GPTK active)"sv);
+        }
+    } else {
+        REX::INFO("Runtime environment: Native Windows NT"sv);
+    }
+
     const auto ver = REX::FModule::GetExecutingModule().GetFileVersion();
-    if (ver < VAR_NUM(SKSE::RUNTIME_SSE_1_5_97, SKSE::RUNTIME_SSE_1_7_104)) {
+    if (ver < VAR_NUM(SKSE::RUNTIME_SSE_1_5_97, SKSE::RUNTIME_SSE_1_6_1130)) {
         REX::ERROR("Unsupported runtime version {}"sv, ver);
 #ifdef SKYRIM_AE
         return false;
@@ -138,7 +153,14 @@ SKSE_PLUGIN_VERSION = []() {
     v.AuthorName("aers");
     v.UsesAddressLibrary();
     v.UsesUpdatedStructs();
-    v.CompatibleVersions({ SKSE::RUNTIME_SSE_1_7_104 });
+    v.versionIndependenceEx = SKSE::PluginVersionData::kVersionIndependentEx_AddressLibraryV5 |
+                              SKSE::PluginVersionData::kVersionIndependentEx_NoStructUse;
+    v.CompatibleVersions({
+        SKSE::RUNTIME_SSE_1_7_104,
+        SKSE::RUNTIME_SSE_1_7_99,
+        SKSE::RUNTIME_SSE_1_6_1170,
+        SKSE::RUNTIME_SSE_1_6_1130
+    });
 
     return v;
 }();
@@ -152,7 +174,7 @@ SKSE_PLUGIN_QUERY(const SKSE::QueryInterface*, SKSE::PluginInfo* a_info)
         std::wostringstream messageBoxText;
         messageBoxText << L"ERROR: Engine Fixes did not pre-load and fixes are not active. Please verify the installation of d3dx9_42.dll from the Part 2 archive. This file must reside in the main game folder alongside SkyrimSE.exe, or be properly installed with your mod manager's root folder functionality.\r\n"sv;
         messageBoxText << L"Skyrim will now close.";
-        REX::W32::MessageBoxW(nullptr, messageBoxText.str().c_str(), L"Engine Fixes", MB_OK);
+        Util::Dialog::ShowWarning(L"Engine Fixes", messageBoxText.str());
 
         spdlog::default_logger()->flush();
         ::TerminateProcess(::GetCurrentProcess(), EXIT_SUCCESS);
@@ -179,7 +201,7 @@ SKSE_PLUGIN_LOAD(const SKSE::LoadInterface* a_skse)
         std::wostringstream messageBoxText;
         messageBoxText << L"ERROR: Engine Fixes did not pre-load and fixes are not active. Please verify the installation of d3dx9_42.dll from the Part 2 archive. This file must reside in the main game folder alongside SkyrimSE.exe, or be properly installed with your mod manager's root folder functionality.\r\n"sv;
         messageBoxText << L"Skyrim will now close.";
-        REX::W32::MessageBoxW(nullptr, messageBoxText.str().c_str(), L"Engine Fixes", MB_OK);
+        Util::Dialog::ShowWarning(L"Engine Fixes", messageBoxText.str());
 
         spdlog::default_logger()->flush();
         ::TerminateProcess(::GetCurrentProcess(), EXIT_SUCCESS);

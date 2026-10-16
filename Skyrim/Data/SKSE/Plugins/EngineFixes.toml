@@ -2,6 +2,7 @@
 [General]
 bVerboseLogging = false                         # enable extra log levels
 bCleanSKSECoSaves = false                       # delete SKSE cosaves with no matching saves
+bWineCompatibility = true                      # auto-detect Wine/CrossOver, use Darwin unified memory CRT allocator, suppress modal freezes
 
 # contains bug fixes
 [Fixes]

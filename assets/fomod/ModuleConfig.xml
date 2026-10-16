@@ -1,0 +1,43 @@
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>Engine Fixes</moduleName>
+  <requiredInstallFiles>
+    <folder source="00 Core" destination="" priority="0" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Configuration Preset">
+      <optionalFileGroups order="Explicit">
+        <group name="Select Environment Preset" type="SelectExactlyOne">
+          <plugins order="Explicit">
+            <plugin name="macOS / CrossOver / D3DMetal (Recommended for Mac)">
+              <description>Optimized for running Skyrim on macOS via CrossOver, Wine, and Apple Game Porting Toolkit (D3DMetal / DXVK). Automatically utilizes Darwin libc scalable unified memory allocator and suppresses blocking Win32 modal message boxes that freeze the Metal presentation surface.</description>
+              <files>
+                <folder source="01 Preset - macOS CrossOver" destination="" priority="1" />
+              </files>
+              <typeDescriptor>
+                <type name="Recommended" />
+              </typeDescriptor>
+            </plugin>
+            <plugin name="Native Windows Standard">
+              <description>Standard configuration for native Windows 10/11 installations. Enables Intel TBB memory manager overrides when tbbmalloc.dll is present, MaxStdIO (8192 file handles), waterflow animation stabilization, and distant tree LOD caching.</description>
+              <files>
+                <folder source="02 Preset - Native Windows" destination="" priority="1" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+            <plugin name="Performance &amp; Clean Preset">
+              <description>Enables automatic orphaned SKSE cosave cleanup (bCleanSKSECoSaves), disables chargen precaching (for RaceMenu users), enables form and tree LOD caching, and ensures clean safe exit on quitting to desktop.</description>
+              <files>
+                <folder source="03 Preset - Clean &amp; Fast" destination="" priority="1" />
+              </files>
+              <typeDescriptor>
+                <type name="Optional" />
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

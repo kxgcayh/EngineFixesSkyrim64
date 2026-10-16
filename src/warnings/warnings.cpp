@@ -1,4 +1,5 @@
 #include "warnings.h"
+#include "util/dialog.h"
 
 #include <fmt/format.h>
 
@@ -16,7 +17,7 @@ namespace Warnings
         }
 
         if (activeHandleCount > warnCount) {
-            REX::WARN(FMT_STRING("your active refr handle count is currently {} which is higher than the warning level of {}"), activeHandleCount, warnCount);
+            REX::WARN("your active refr handle count is currently {} which is higher than the warning level of {}"sv, activeHandleCount, warnCount);
             if (warnCount == Settings::Warnings::uRefrMainMenuLimit.GetValue())
                 REX::WARN("this is your main menu limit"sv);
             if (warnCount == Settings::Warnings::uRefrLoadedGameLimit.GetValue())
@@ -26,7 +27,7 @@ namespace Warnings
 
             std::wostringstream warningString;
             warningString << L"WARNING: Your active refr handle count is currently "sv << activeHandleCount << L" which is dangerously close to the limit. Please check the Engine Fixes log for more details."sv;
-            REX::W32::MessageBoxW(nullptr, warningString.str().c_str(), L"Engine Fixes for Skyrim Special Edition", MB_OK);
+            Util::Dialog::ShowWarning(L"Engine Fixes for Skyrim Special Edition", warningString.str());
         }
     }
 }

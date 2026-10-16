@@ -58,6 +58,22 @@ namespace Patches::TreeLodReferenceCaching
                                 objectReference = nullptr;
                             }
 
+                            // Continue search in ESL light plugins if not found in regular masters
+                            if (!objectReference) {
+                                for (std::uint32_t j = 0; j < dataHandler->compiledFileCollection.smallFiles.size(); j++) {
+                                    const std::uint32_t eslFormId = 0xFE000000 | (j << 12) | (baseId & 0x00000FFF);
+                                    if (RE::TESForm* form = FormCaching::detail::TESForm_GetFormByNumericId(eslFormId))
+                                        objectReference = form->AsReference();
+                                    if (objectReference) {
+                                        if (const auto baseObj = objectReference->GetBaseObject()) {
+                                            if (HasTreeLod(baseObj))
+                                                break;
+                                        }
+                                    }
+                                    objectReference = nullptr;
+                                }
+                            }
+
                             // Insert even if it's a null pointer
                             g_treeReferenceCache.emplace(baseId, objectReference);
                         }
@@ -72,9 +88,9 @@ namespace Patches::TreeLodReferenceCaching
                     if (objectReference) {
                         const auto object3D = objectReference->Get3D();
                         const auto parentCell = objectReference->GetParentCell();
-                        if (object3D && !object3D->GetAppCulled() && parentCell->IsAttached()) {
+                        if (object3D && !object3D->GetAppCulled() && parentCell && parentCell->IsAttached()) {
                             static auto bEnableStippleFade = RE::GetINISetting("bEnableStippleFade:Display");  // ini settings are kept in a linked list, so we'll cache it
-                            if (bEnableStippleFade->GetBool()) {
+                            if (bEnableStippleFade && bEnableStippleFade->GetBool()) {
                                 const auto objectFadeNode = object3D->AsFadeNode();
                                 if (objectFadeNode) {
                                     alpha = 1.0f - objectFadeNode->currentFade;
