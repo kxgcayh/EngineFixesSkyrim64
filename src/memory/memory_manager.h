@@ -8,22 +8,45 @@ namespace Memory::MemoryManager
         // replicate this behavior
         inline std::byte* g_ZeroAddress{ nullptr };
 
+        inline bool IsZeroAddress(void* a_mem) noexcept
+        {
+            if (a_mem == nullptr) {
+                return true;
+            }
+            if (g_ZeroAddress != nullptr && a_mem == g_ZeroAddress) {
+                return true;
+            }
+            REL::Relocation<std::byte**> zeroAddressPtr{ RELOCATION_ID(514118, 410163) };
+            const auto engineZero = *zeroAddressPtr;
+            if (engineZero != nullptr) {
+                if (a_mem == engineZero) {
+                    return true;
+                }
+                const auto altZero = reinterpret_cast<void*>(reinterpret_cast<std::uintptr_t>(engineZero) ^ 0x10);
+                if (a_mem == altZero) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // MemoryManager::AutoScrapBuffer impl
         // ScrapHeap RAII wrapper
         struct AutoScrapBuffer
         {
-            static void Ctor(AutoScrapBuffer* a_self, const std::size_t a_size, const std::size_t a_alignment)
+            static AutoScrapBuffer* Ctor(AutoScrapBuffer* a_self, const std::size_t a_size, const std::size_t a_alignment)
             {
                 if (a_size == 0) {
                     a_self->p_Memory = g_ZeroAddress;
                 } else {
                     a_self->p_Memory = Allocator::GetAllocator()->AllocateAligned(a_size, a_alignment);
                 }
+                return a_self;
             }
 
             static void Dtor(AutoScrapBuffer* a_self)
             {
-                if (a_self->p_Memory != g_ZeroAddress) {
+                if (!IsZeroAddress(a_self->p_Memory)) {
                     Allocator::GetAllocator()->DeallocateAligned(a_self->p_Memory);
                 }
                 a_self->p_Memory = nullptr;
@@ -52,7 +75,7 @@ namespace Memory::MemoryManager
 
         inline void* Reallocate(RE::MemoryManager* a_self, void* a_oldMem, const std::size_t a_newSize, const std::uint32_t a_alignment, const bool a_alignmentRequired)
         {
-            if (a_oldMem == g_ZeroAddress)
+            if (IsZeroAddress(a_oldMem))
                 return Allocate(a_self, a_newSize, a_alignment, a_alignmentRequired);
 
             return a_alignmentRequired ? Allocator::GetAllocator()->ReallocateAligned(a_oldMem, a_newSize, a_alignment) : Allocator::GetAllocator()->Reallocate(a_oldMem, a_newSize);
@@ -60,7 +83,7 @@ namespace Memory::MemoryManager
 
         inline void Deallocate(RE::MemoryManager*, void* a_mem, const bool a_alignmentRequired)
         {
-            if (a_mem != g_ZeroAddress) {
+            if (!IsZeroAddress(a_mem)) {
                 if (a_alignmentRequired)
                     Allocator::GetAllocator()->DeallocateAligned(a_mem);
                 else
@@ -70,7 +93,7 @@ namespace Memory::MemoryManager
 
         inline std::size_t Size(RE::MemoryManager*, void* a_mem)
         {
-            if (a_mem == g_ZeroAddress)
+            if (IsZeroAddress(a_mem))
                 return 0;
 
             return Allocator::GetAllocator()->Size(a_mem);
@@ -98,11 +121,15 @@ namespace Memory::MemoryManager
 
             REL::Relocation<std::uint32_t*> initFence{ RELOCATION_ID(514112, 400190) };
             *initFence = 2;
+
+            REL::Relocation<std::byte**> zeroAddressPtr{ RELOCATION_ID(514118, 410163) };
+            *zeroAddressPtr = g_ZeroAddress;
         }
 
         inline void Install()
         {
-            g_ZeroAddress = new std::byte[1u << 10]{ static_cast<std::byte>(0) };
+            g_ZeroAddress = static_cast<std::byte*>(Allocator::GetAllocator()->AllocateAligned(1u << 10, 64));
+            std::memset(g_ZeroAddress, 0, 1u << 10);
 
             StubInit();
             ReplaceAllocRoutines();

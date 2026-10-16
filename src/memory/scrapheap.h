@@ -1,6 +1,7 @@
 #pragma once
 
 #include "allocator.h"
+#include "memory_manager.h"
 
 namespace Memory::ScrapHeap
 {
@@ -29,7 +30,9 @@ namespace Memory::ScrapHeap
 
         inline void Deallocate(RE::ScrapHeap*, void* a_mem)
         {
-            Allocator::GetAllocator()->DeallocateAligned(a_mem);
+            if (!MemoryManager::detail::IsZeroAddress(a_mem)) {
+                Allocator::GetAllocator()->DeallocateAligned(a_mem);
+            }
         }
 
         inline void WriteStubs()
