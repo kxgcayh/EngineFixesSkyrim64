@@ -166,25 +166,41 @@ The repository provides automated packager scripts to bundle installable zip arc
 
 #### Bash Packager (macOS / Linux / Git Bash):
 ```bash
-# Package all archives (Standard Part 1 and FOMOD All-In-One):
+# Cross-compile, then package (uses the same variables as section 4.3):
+export WINSDK_PATH="/path/to/winsdk"   # toolchain file: $WINSDK_PATH/toolchain/clang-cl-msvc.cmake
+export VCPKG_ROOT="/path/to/vcpkg"     # packages:       $VCPKG_ROOT/installed/x64-windows-cross
+./package-release.sh
+
+# Package a DLL you already built (build/EngineFixes.dll, build/Release/EngineFixes.dll, dist/EngineFixes.dll):
 ./package-release.sh --skip-build
 
 # Or specify a custom compiled DLL path:
 ./package-release.sh --dll /path/to/EngineFixes.dll
 
 # Package only the FOMOD interactive installer:
-./package-release.sh --fomod-only
+./package-release.sh --fomod-only --dll /path/to/EngineFixes.dll
 ```
+
+Optional variables: `LLVM_PATH` (its `bin/llvm-objdump` checks the plugin exports; otherwise `llvm-objdump` on
+`PATH`, and the check is skipped if neither exists), `EF_TOOLCHAIN_FILE` and `EF_VCPKG_PREFIX` (override the two
+paths above), `EF_STAGE_DIR` (also copy the packaged DLL there, and search it with `--skip-build`). Without
+`EF_STAGE_DIR` the packager writes nothing outside the repository.
+
+The packager stops with an error, and writes no archive, when the build fails, when the build variables are
+missing, or when no `EngineFixes.dll` is found: it never packages a stale or missing DLL.
 
 #### Python Packager (Cross-Platform):
 ```bash
 python3 scripts/package_release.py [--dll /path/to/EngineFixes.dll] [--fomod-only] [--part1-only]
 ```
 
-Outputs generated in `dist/`:
-- `EngineFixes-Part1-AE17104-v7.0.23.zip`: Direct mod manager installable archive (`SKSE/Plugins/`).
-- `EngineFixes-FOMOD-AllInOne-v7.0.23.zip`: Interactive FOMOD installer with presets for macOS CrossOver, Native Windows, and Clean/Fast.
-- `SHA256SUMS.txt`: SHA-256 integrity checksums for generated archives.
+It packages an existing DLL only (no build), searching the same places as `--skip-build`, and reads the version
+from `CMakeLists.txt`.
+
+Outputs generated in `dist/` (`<version>` is `set(VERSION ...)` in `CMakeLists.txt`):
+- `EngineFixes-Part1-AE17104-v<version>.zip`: Direct mod manager installable archive (`SKSE/Plugins/`).
+- `EngineFixes-FOMOD-AllInOne-v<version>.zip`: Interactive FOMOD installer with presets for macOS CrossOver, Native Windows, and Clean/Fast.
+- `SHA256SUMS.txt`: SHA-256 integrity checksums for the archives built in that run.
 
 ---
 

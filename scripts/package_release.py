@@ -8,15 +8,23 @@ Compatible with Windows, macOS, and Linux using pure standard library.
 import argparse
 import hashlib
 import os
+import re
 import shutil
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
-VERSION = "7.0.23"
+VERSION = ""  # read from CMakeLists.txt set(VERSION ...) in main()
 GAME_VERSION = "AE17104"
 MOD_ID = 17230
+
+def read_version(root: Path) -> str:
+    m = re.search(r"set\(VERSION\s+([^\s)]+)", (root / "CMakeLists.txt").read_text(encoding="utf-8"))
+    if not m:
+        sys.exit("[ERROR] No set(VERSION ...) found in CMakeLists.txt")
+    return m.group(1)
+
 
 def calculate_sha256(file_path: Path) -> str:
     h = hashlib.sha256()
@@ -112,24 +120,29 @@ def main():
     parser.add_argument("--dist", type=Path, default=None, help="Output directory (default: ./dist)")
     args = parser.parse_args()
 
+    global VERSION
     root = Path(__file__).resolve().parent.parent
+    VERSION = read_version(root)
     dist = args.dist if args.dist else root / "dist"
-    dist.mkdir(parents=True, exist_ok=True)
 
     dll_path = args.dll
-    if not dll_path or not dll_path.is_file():
-        # Check standard build and staging locations
-        candidates = [
-            root / "build" / "EngineFixes.dll",
-            root / "build" / "Release" / "EngineFixes.dll",
-            root.parent.parent / "SkyrimMods" / "compiled_dlls" / "EngineFixes.dll",
-            dist / "EngineFixes.dll",
-        ]
+    if dll_path is not None and not dll_path.is_file():
+        sys.exit(f"[ERROR] --dll {dll_path} does not exist. No archives were written.")
+    if dll_path is None:
+        # A DLL built earlier: build folders, then EF_STAGE_DIR if set, then dist/
+        candidates = [root / "build" / "EngineFixes.dll", root / "build" / "Release" / "EngineFixes.dll"]
+        if os.environ.get("EF_STAGE_DIR"):
+            candidates.append(Path(os.environ["EF_STAGE_DIR"]) / "EngineFixes.dll")
+        candidates.append(dist / "EngineFixes.dll")
         for c in candidates:
             if c.is_file():
                 dll_path = c
                 print(f"[+] Found pre-compiled DLL: {dll_path}")
                 break
+    if dll_path is None:
+        sys.exit("[ERROR] No EngineFixes.dll to package. Build it, or pass --dll /path/to/EngineFixes.dll. "
+                 "No archives were written.")
+    dist.mkdir(parents=True, exist_ok=True)
 
     archives = []
     if not args.fomod_only:

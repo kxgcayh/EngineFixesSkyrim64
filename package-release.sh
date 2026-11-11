@@ -3,14 +3,22 @@
 # EngineFixesSkyrim64 Release Packager for Skyrim AE 1.7.104
 # Packages installable mod manager archives (Standard & FOMOD All-In-One).
 #
-# Outputs:
-#   dist/EngineFixes-Part1-AE17104-v7.0.21.zip    (Direct Mod Manager Part 1 archive)
-#   dist/EngineFixes-FOMOD-AllInOne-v7.0.21.zip   (FOMOD installer with environment presets)
-#   dist/SHA256SUMS.txt                            (SHA-256 checksums of generated archives)
+# Outputs (<version> is set(VERSION ...) in CMakeLists.txt):
+#   dist/EngineFixes-Part1-AE17104-v<version>.zip    (Direct Mod Manager Part 1 archive)
+#   dist/EngineFixes-FOMOD-AllInOne-v<version>.zip   (FOMOD installer with environment presets)
+#   dist/SHA256SUMS.txt                               (SHA-256 checksums of generated archives)
 #
 # Usage:
 #   ./package-release.sh [--skip-build] [--dll /path/to/EngineFixes.dll] [--part1-only] [--fomod-only]
 #
+# Building (no --dll / --skip-build) cross-compiles with clang-cl, configured like README section 4.3:
+#   WINSDK_PATH        Windows SDK sysroot; the toolchain file is $WINSDK_PATH/toolchain/clang-cl-msvc.cmake
+#   VCPKG_ROOT         vcpkg root; packages from $VCPKG_ROOT/installed/x64-windows-cross
+#   LLVM_PATH          optional, LLVM install whose bin/llvm-objdump checks the exports (else PATH)
+#   EF_TOOLCHAIN_FILE  optional, overrides the toolchain file
+#   EF_VCPKG_PREFIX    optional, overrides the vcpkg installed prefix
+#   EF_STAGE_DIR       optional, folder that also receives a copy of the packaged DLL
+#                      (and is searched with --skip-build). Unset: nothing is written outside this repo.
 
 set -euo pipefail
 
@@ -21,13 +29,25 @@ DIST_DIR="$SCRIPT_DIR/dist"
 ASSETS_DIR="$SCRIPT_DIR/assets"
 SKYRIM_ASSETS_DIR="$SCRIPT_DIR/Skyrim/Data"
 BUILD_DIR="$SCRIPT_DIR/build"
-COMPILED_STAGING="$SCRIPT_DIR/../../SkyrimMods/compiled_dlls"
+STAGE_DIR="${EF_STAGE_DIR:-}"
 
-TOOLCHAIN="/Volumes/S512/Projects/ETC/winsdk/toolchain/clang-cl-msvc.cmake"
-VCPKG_PREFIX="/Volumes/S512/Projects/ETC/vcpkg/installed/x64-windows-cross"
+TOOLCHAIN="${EF_TOOLCHAIN_FILE:-${WINSDK_PATH:+$WINSDK_PATH/toolchain/clang-cl-msvc.cmake}}"
+VCPKG_PREFIX="${EF_VCPKG_PREFIX:-${VCPKG_ROOT:+$VCPKG_ROOT/installed/x64-windows-cross}}"
 
 VERSION="$(grep -m1 'set(VERSION' "$SCRIPT_DIR/CMakeLists.txt" | awk '{print $2}')"
-VERSION="${VERSION:-7.0.23}"
+if [[ -z "$VERSION" ]]; then
+    echo "[ERROR] No set(VERSION ...) found in CMakeLists.txt" >&2
+    exit 1
+fi
+
+STAGE_PART1=""
+STAGE_FOMOD=""
+cleanup() {
+    [[ -n "$STAGE_PART1" ]] && rm -rf "$STAGE_PART1"
+    [[ -n "$STAGE_FOMOD" ]] && rm -rf "$STAGE_FOMOD"
+    return 0
+}
+trap cleanup EXIT
 
 SKIP_BUILD=0
 CUSTOM_DLL=""
@@ -73,26 +93,29 @@ DLL=""
 if [[ -n "$CUSTOM_DLL" ]]; then
     DLL="$CUSTOM_DLL"
     echo "[1/4] Using specified DLL: $DLL"
-elif [[ $SKIP_BUILD -eq 0 && -f "$TOOLCHAIN" ]]; then
+elif [[ $SKIP_BUILD -eq 0 ]]; then
+    if [[ -z "$TOOLCHAIN" || ! -f "$TOOLCHAIN" || -z "$VCPKG_PREFIX" ]]; then
+        echo "[ERROR] Cannot build: set WINSDK_PATH and VCPKG_ROOT as in README section 4.3" >&2
+        echo "        (or EF_TOOLCHAIN_FILE / EF_VCPKG_PREFIX), or package an existing DLL with" >&2
+        echo "        --dll /path/to/EngineFixes.dll or --skip-build." >&2
+        echo "        Toolchain file: ${TOOLCHAIN:-<unset>}" >&2
+        exit 1
+    fi
     echo "[1/4] Configuring CMake and cross-compiling EngineFixes.dll..."
     cmake -B "$BUILD_DIR" -S "$SCRIPT_DIR" -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SKYRIMAE=ON \
         -DCOPY_BUILD=OFF \
         -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN" \
-        -DCMAKE_PREFIX_PATH="$VCPKG_PREFIX" 2>/dev/null || true
-    if [[ -d "$BUILD_DIR" ]] && cmake --build "$BUILD_DIR" --config Release 2>/dev/null; then
-        DLL="$BUILD_DIR/EngineFixes.dll"
-    fi
-fi
-
-if [[ -z "$DLL" || ! -f "$DLL" ]]; then
-    # Search common build and staging locations
-    for candidate in \
-        "$BUILD_DIR/EngineFixes.dll" \
-        "$BUILD_DIR/Release/EngineFixes.dll" \
-        "$COMPILED_STAGING/EngineFixes.dll" \
-        "$DIST_DIR/EngineFixes.dll"; do
+        -DCMAKE_PREFIX_PATH="$VCPKG_PREFIX"
+    cmake --build "$BUILD_DIR" --config Release
+    DLL="$BUILD_DIR/EngineFixes.dll"
+else
+    # --skip-build: package a DLL built earlier
+    candidates=("$BUILD_DIR/EngineFixes.dll" "$BUILD_DIR/Release/EngineFixes.dll")
+    [[ -n "$STAGE_DIR" ]] && candidates+=("$STAGE_DIR/EngineFixes.dll")
+    candidates+=("$DIST_DIR/EngineFixes.dll")
+    for candidate in "${candidates[@]}"; do
         if [[ -f "$candidate" ]]; then
             DLL="$candidate"
             echo "[1/4] Found existing pre-compiled DLL: $DLL"
@@ -102,35 +125,41 @@ if [[ -z "$DLL" || ! -f "$DLL" ]]; then
 fi
 
 if [[ -z "$DLL" || ! -f "$DLL" ]]; then
-    echo "[WARN] No pre-compiled EngineFixes.dll found in build directories."
-    echo "       Creating a dummy verification placeholder or pass --dll /path/to/EngineFixes.dll."
-    echo "       Packaging will continue with configuration assets and staging."
+    echo "[ERROR] No EngineFixes.dll to package${DLL:+ ($DLL does not exist)}." >&2
+    echo "        Build it, or pass --dll /path/to/EngineFixes.dll. No archives were written." >&2
+    exit 1
 fi
 
-# 2. Binary Verification (if DLL exists)
-if [[ -n "$DLL" && -f "$DLL" ]]; then
-    echo "[2/4] Verifying binary architecture and exports..."
-    file "$DLL" | grep -q "PE32+.*x86-64" || {
-        echo "[ERROR] $DLL is not a 64-bit Windows PE DLL" >&2
-        exit 1
-    }
+# 2. Binary Verification
+echo "[2/4] Verifying binary architecture and exports..."
+file "$DLL" | grep -q "PE32+.*x86-64" || {
+    echo "[ERROR] $DLL is not a 64-bit Windows PE DLL" >&2
+    exit 1
+}
 
-    OBJDUMP="/opt/homebrew/opt/llvm/bin/llvm-objdump"
-    if [[ -x "$OBJDUMP" ]]; then
-        for export_sym in SKSEPlugin_Load SKSEPlugin_Version; do
-            "$OBJDUMP" -p "$DLL" | grep -q "$export_sym" || {
-                echo "[WARN] Missing export symbol: $export_sym" >&2
-            }
-        done
-    fi
-    echo "      Architecture: PE32+ x86-64 verified"
-
-    # Stage to central compiled_dlls
-    mkdir -p "$COMPILED_STAGING"
-    cp "$DLL" "$COMPILED_STAGING/EngineFixes.dll"
-    echo "      Staged to: $COMPILED_STAGING/EngineFixes.dll"
+OBJDUMP=""
+if [[ -n "${LLVM_PATH:-}" && -x "$LLVM_PATH/bin/llvm-objdump" ]]; then
+    OBJDUMP="$LLVM_PATH/bin/llvm-objdump"
+elif command -v llvm-objdump >/dev/null 2>&1; then
+    OBJDUMP="$(command -v llvm-objdump)"
+fi
+if [[ -n "$OBJDUMP" ]]; then
+    for export_sym in SKSEPlugin_Load SKSEPlugin_Version; do
+        "$OBJDUMP" -p "$DLL" | grep -q "$export_sym" || {
+            echo "[WARN] Missing export symbol: $export_sym" >&2
+        }
+    done
 else
-    echo "[2/4] Skipping binary verification (no DLL specified)"
+    echo "      llvm-objdump not found (set LLVM_PATH or add it to PATH): export check skipped"
+fi
+echo "      Architecture: PE32+ x86-64 verified"
+
+if [[ -n "$STAGE_DIR" ]]; then
+    mkdir -p "$STAGE_DIR"
+    if [[ "$(cd "$(dirname "$DLL")" && pwd)/$(basename "$DLL")" != "$(cd "$STAGE_DIR" && pwd)/EngineFixes.dll" ]]; then
+        cp "$DLL" "$STAGE_DIR/EngineFixes.dll"
+    fi
+    echo "      Staged to: $STAGE_DIR/EngineFixes.dll"
 fi
 
 # 3. Create Distribution Archives
@@ -140,13 +169,9 @@ mkdir -p "$DIST_DIR"
 if [[ $BUILD_PART1 -eq 1 ]]; then
     echo "[3/4] Packaging Part 1 Mod Manager archive..."
     STAGE_PART1="$(mktemp -d "${TMPDIR:-/tmp}/ef-part1.XXXXXX")"
-    trap 'rm -rf "$STAGE_PART1"' EXIT
 
     mkdir -p "$STAGE_PART1/SKSE/Plugins"
-
-    if [[ -n "$DLL" && -f "$DLL" ]]; then
-        cp "$DLL" "$STAGE_PART1/SKSE/Plugins/EngineFixes.dll"
-    fi
+    cp "$DLL" "$STAGE_PART1/SKSE/Plugins/EngineFixes.dll"
 
     cp "$SKYRIM_ASSETS_DIR/SKSE/Plugins/EngineFixes.toml" "$STAGE_PART1/SKSE/Plugins/EngineFixes.toml"
     cp "$SKYRIM_ASSETS_DIR/SKSE/Plugins/EngineFixes_SNCT.ini" "$STAGE_PART1/SKSE/Plugins/EngineFixes_SNCT.ini"
@@ -174,13 +199,10 @@ fi
 if [[ $BUILD_FOMOD -eq 1 ]]; then
     echo "[3/4] Packaging FOMOD All-In-One archive..."
     STAGE_FOMOD="$(mktemp -d "${TMPDIR:-/tmp}/ef-fomod.XXXXXX")"
-    trap 'rm -rf "$STAGE_FOMOD"' EXIT
 
     # Core files
     mkdir -p "$STAGE_FOMOD/00 Core/SKSE/Plugins"
-    if [[ -n "$DLL" && -f "$DLL" ]]; then
-        cp "$DLL" "$STAGE_FOMOD/00 Core/SKSE/Plugins/EngineFixes.dll"
-    fi
+    cp "$DLL" "$STAGE_FOMOD/00 Core/SKSE/Plugins/EngineFixes.dll"
     cp "$SKYRIM_ASSETS_DIR/SKSE/Plugins/EngineFixes_SNCT.ini" "$STAGE_FOMOD/00 Core/SKSE/Plugins/EngineFixes_SNCT.ini"
     cp "$SKYRIM_ASSETS_DIR/SKSE/Plugins/EngineFixes_preload.txt" "$STAGE_FOMOD/00 Core/SKSE/Plugins/EngineFixes_preload.txt"
 
@@ -216,18 +238,20 @@ fi
 echo "[4/4] Generating checksums and verifying archives..."
 cd "$DIST_DIR"
 rm -f SHA256SUMS.txt
-for arch in EngineFixes-*.zip; do
-    if [[ -f "$arch" ]]; then
-        shasum -a 256 "$arch" >> SHA256SUMS.txt
-        echo "--------------------------------------------------"
-        echo "File: $arch"
-        shasum -a 256 "$arch"
-        echo "Contents:"
-        unzip -l "$arch"
-    fi
+# Only this run's archives: older versions left in dist/ must not enter the checksum file.
+BUILT=()
+[[ $BUILD_PART1 -eq 1 ]] && BUILT+=("$(basename "$ARCHIVE_PART1")")
+[[ $BUILD_FOMOD -eq 1 ]] && BUILT+=("$(basename "$ARCHIVE_FOMOD")")
+for arch in "${BUILT[@]}"; do
+    shasum -a 256 "$arch" >> SHA256SUMS.txt
+    echo "--------------------------------------------------"
+    echo "File: $arch"
+    shasum -a 256 "$arch"
+    echo "Contents:"
+    unzip -l "$arch"
 done
 
 echo "=================================================="
-echo "Packaging complete. Archives located in dist/:"
-ls -lh "$DIST_DIR"/*.zip
+echo "Packaging complete. Archives in dist/:"
+for arch in "${BUILT[@]}"; do ls -lh "$arch"; done
 echo "=================================================="
